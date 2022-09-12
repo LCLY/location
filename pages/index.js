@@ -14,13 +14,36 @@ export default function Home() {
 	const handleClose = () => setShow(false);
 	const handleShow = () => setShow(true);
 	const handleSubmit = () => {
-		console.log("SEND", jobStatus);
 		setShow(false);
+
+		let lat,
+			long = "";
+
+		if (!navigator.geolocation) {
+			alert("Geolocation is not supported by your browser");
+		} else {
+			navigator.geolocation.getCurrentPosition(
+				(position) => {
+					lat = position.coords.latitude;
+					long = position.coords.longitude;
+					setLocation({
+						lat: lat,
+						long: long,
+					});
+				},
+				() => {
+					alert("Unable to retrieve your location");
+				}
+			);
+		}
+
+		console.log(lat, long);
+
 		axios
-			.put(
+			.patch(
 				`https://fmstest.dev2ezasia.com/api/v1/work_orders/${selectedWorkOrder.id}/`,
 
-				{ job_status: jobStatus },
+				{ job_status: jobStatus, lat: lat, long: long },
 				{
 					headers: {
 						Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -29,23 +52,6 @@ export default function Home() {
 			)
 			.then((res) => {
 				console.log(res);
-
-				if (!navigator.geolocation) {
-					alert("Geolocation is not supported by your browser");
-				} else {
-					console.log("Locating...");
-					navigator.geolocation.getCurrentPosition(
-						(position) => {
-							setLocation({
-								lat: position.coords.latitude,
-								long: position.coords.longitude,
-							});
-						},
-						() => {
-							alert("Unable to retrieve your location");
-						}
-					);
-				}
 			})
 			.catch((err) => console.log(err));
 	};
