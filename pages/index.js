@@ -3,58 +3,69 @@ import Head from "next/head";
 import styles from "../styles/Home.module.scss";
 import axios from "axios";
 import ModalComponent from "../component/Modal";
+import MapModal from "../component/MapModal";
 
 export default function Home() {
 	const [workOrders, setWorkOrders] = useState(null);
 	const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
 	const [jobStatus, setJobStatus] = useState(null);
-	const [location, setLocation] = useState({ lat: "", long: "" });
+	const [location, setLocation] = useState(null);
 	const [show, setShow] = useState(false);
+	const [showMap, setShowMap] = useState(false);
+
+	const handleMapClose = () => {
+		setShowMap(false);
+		setLocation(null); //reset the location after close
+	};
+	const handleMapShow = () => setShowMap(true);
 
 	const handleClose = () => setShow(false);
 	const handleShow = () => setShow(true);
 	const handleSubmit = () => {
 		setShow(false);
 
-		let lat,
-			long = "";
-
 		if (!navigator.geolocation) {
 			alert("Geolocation is not supported by your browser");
 		} else {
 			navigator.geolocation.getCurrentPosition(
 				(position) => {
-					lat = position.coords.latitude;
-					long = position.coords.longitude;
 					setLocation({
-						lat: lat,
-						long: long,
+						lat: position.coords.latitude,
+						long: position.coords.longitude,
 					});
+
+					axios
+						.patch(
+							`https://fmstest.dev2ezasia.com/api/v1/work_orders/${selectedWorkOrder.id}/`,
+
+							{
+								job_status: jobStatus,
+								lat: position.coords.latitude,
+								long: position.coords.longitude,
+							},
+							{
+								headers: {
+									Authorization: `Bearer ${localStorage.getItem(
+										"accessToken"
+									)}`,
+								},
+							}
+						)
+						.then((res) => {
+							console.log(res);
+						})
+						.catch((err) => console.log(err));
 				},
 				() => {
 					alert("Unable to retrieve your location");
 				}
 			);
 		}
-
-		console.log(lat, long);
-
-		axios
-			.patch(
-				`https://fmstest.dev2ezasia.com/api/v1/work_orders/${selectedWorkOrder.id}/`,
-
-				{ job_status: jobStatus, lat: lat, long: long },
-				{
-					headers: {
-						Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-					},
-				}
-			)
-			.then((res) => {
-				console.log(res);
-			})
-			.catch((err) => console.log(err));
 	};
+
+	useEffect(() => {
+		console.log(location);
+	}, [location]);
 
 	useEffect(() => {
 		axios
@@ -112,7 +123,17 @@ export default function Home() {
 												>
 													Edit Status
 												</button>
-												<button type='button' className='btn btn-dark'>
+												<button
+													disabled={
+														location === null ||
+														selectedWorkOrder.id !== child.id
+													}
+													type='button'
+													className='btn btn-dark'
+													onClick={() => {
+														handleMapShow();
+													}}
+												>
 													View Map
 												</button>
 											</td>
@@ -131,6 +152,14 @@ export default function Home() {
 					handleClose={handleClose}
 					handleSubmit={handleSubmit}
 					selectedWorkOrder={selectedWorkOrder}
+				/>
+			)}
+			{location && (
+				<MapModal
+					showMap={showMap}
+					location={location}
+					handleMapClose={handleMapClose}
+					handleMapShow={handleMapShow}
 				/>
 			)}
 		</>
